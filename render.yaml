@@ -1,9 +1,9 @@
 services:
   - type: web
-    name: employee-monitor-backend
-    runtime: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    name: employee-monitor
+    runtime: node
+    buildCommand: bash build.sh
+    startCommand: node backend/server.js
     envVars:
       - key: MONGODB_URI
         sync: false
@@ -11,18 +11,4 @@ services:
         generateValue: true
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 3000
     healthCheckPath: /api/health
-
-  - type: web
-    name: employee-monitor-dashboard
-    runtime: docker
-    dockerfilePath: ./web-dashboard/Dockerfile
-    dockerContext: ./web-dashboard
-    envVars:
-      - key: VITE_API_URL
-        fromService:
-          name: employee-monitor-backend
-          type: web
-          property: host
