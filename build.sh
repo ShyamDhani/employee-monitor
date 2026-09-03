@@ -7,7 +7,7 @@ npm install
 
 echo "==> Building web dashboard..."
 cd ../web-dashboard
-npm install
-npx --yes vite build
+npm install --include=dev
+npx vite build
 
 echo "==> Build complete!"
