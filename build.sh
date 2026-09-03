@@ -8,6 +8,6 @@ npm install
 echo "==> Building web dashboard..."
 cd ../web-dashboard
 npm install
-npm run build
+npx --yes vite build
 
 echo "==> Build complete!"
