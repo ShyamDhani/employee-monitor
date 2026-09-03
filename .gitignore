@@ -1,0 +1,56 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# MongoDB data directories
+.mongo-data/
+.mongo-data-fresh/
+.mongo-data-fresh2/
+mongodb-7.0/
+
+# Log files
+*.log
+
+# Build artifacts
+*.apk
+android-app/build/
+android-app/app/build/
+android-app/.gradle/
+web-dashboard/dist/
+web-dashboard/node_modules/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Node modules and dependencies
+node_modules/
+package-lock.json
+
+# Docker volumes
+mongo-fresh/
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Windows specific
+*.exe
+
+# ngrok configuration
+ngrok.yml
+
+# Uploads
+backend/uploads/
+
+# Android local properties
+android-app/local.properties
