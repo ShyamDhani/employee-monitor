@@ -51,9 +51,16 @@ try {
 
 connectDB();
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100
+const uploadLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 200,
+  message: { success: false, message: 'Too many uploads, try again later' }
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 500,
+  message: { success: false, message: 'Too many requests, try again later' }
 });
 
 app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
@@ -66,8 +73,6 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
-app.use('/api/activity', limiter);
-app.use('/api/screenshot', limiter);
 
 app.set('io', io);
 
@@ -94,13 +99,17 @@ app.get('/api/screenshots/count', async (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
+app.use('/api/activity/upload', uploadLimiter);
+app.use('/api/activity/batch', uploadLimiter);
 app.use('/api/activity', activityRoutes);
+app.use('/api/screenshot/upload', uploadLimiter);
+app.use('/api/screenshot/batch', uploadLimiter);
 app.use('/api/screenshot', screenshotRoutes);
 app.use('/api/reports', reportRoutes);
-app.use('/api/location', locationRoutes);
+app.use('/api/location', apiLimiter, locationRoutes);
 app.use('/api/settings', settingsRoutes);
-app.use('/api/alerts', alertRoutes);
-app.use('/api/audio', audioRoutes);
+app.use('/api/alerts', apiLimiter, alertRoutes);
+app.use('/api/audio', apiLimiter, audioRoutes);
 
 setupSocketHandlers(io);
 
