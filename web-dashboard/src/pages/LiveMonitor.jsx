@@ -43,7 +43,7 @@ export default function LiveMonitor() {
     const interval = setInterval(() => {
       fetchEmployees();
       fetchActivities();
-    }, 5000);
+    }, 15000);
     return () => clearInterval(interval);
   }, []);
 
