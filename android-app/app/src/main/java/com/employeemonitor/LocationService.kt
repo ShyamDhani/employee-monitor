@@ -32,6 +32,7 @@ class LocationService : Service(), LocationListener {
         private const val TAG = "LocationService"
         private const val CHANNEL_ID = "location_channel"
         private const val NOTIFICATION_ID = 1002
+        private const val LOCATION_CHECK_INTERVAL = 30000L
         var isRunning = false
             private set
     }
@@ -39,6 +40,14 @@ class LocationService : Service(), LocationListener {
     private var locationManager: LocationManager? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var db: OfflineDatabase
+    private var locationEnabledAlertSent = false
+    private val locationCheckRunnable = object : Runnable {
+        override fun run() {
+            checkLocationEnabled()
+            handler.postDelayed(this, LOCATION_CHECK_INTERVAL)
+        }
+    }
+    private val handler = android.os.Handler(Looper.getMainLooper())
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -63,11 +72,13 @@ class LocationService : Service(), LocationListener {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIFICATION_ID, createNotification("Tracking location"))
         startLocationTracking()
+        handler.postDelayed(locationCheckRunnable, LOCATION_CHECK_INTERVAL)
         return START_STICKY
     }
 
     override fun onDestroy() {
         isRunning = false
+        handler.removeCallbacks(locationCheckRunnable)
         serviceScope.cancel()
         stopLocationTracking()
         super.onDestroy()
@@ -108,9 +119,83 @@ class LocationService : Service(), LocationListener {
     @Deprecated("Deprecated in Java")
     override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
 
-    override fun onProviderEnabled(provider: String) {}
+    override fun onProviderEnabled(provider: String) {
+        Log.d(TAG, "Location provider enabled: $provider")
+        if (locationEnabledAlertSent) {
+            locationEnabledAlertSent = false
+            sendLocationStatusAlert("enabled")
+        }
+    }
 
-    override fun onProviderDisabled(provider: String) {}
+    override fun onProviderDisabled(provider: String) {
+        Log.w(TAG, "Location provider disabled: $provider")
+        if (!locationEnabledAlertSent) {
+            locationEnabledAlertSent = true
+            sendLocationStatusAlert("disabled")
+        }
+    }
+
+    private fun checkLocationEnabled() {
+        try {
+            val lm = locationManager ?: return
+            val gpsEnabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
+            val networkEnabled = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+
+            if (!gpsEnabled && !networkEnabled && !locationEnabledAlertSent) {
+                locationEnabledAlertSent = true
+                sendLocationStatusAlert("disabled")
+            } else if ((gpsEnabled || networkEnabled) && locationEnabledAlertSent) {
+                locationEnabledAlertSent = false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking location status", e)
+        }
+    }
+
+    private fun sendLocationStatusAlert(status: String) {
+        val empId = DeviceConfig.getEmployeeId(this)
+        if (empId.isEmpty()) return
+
+        val title = if (status == "disabled") "Location Disabled" else "Location Re-enabled"
+        val message = if (status == "disabled")
+            "Employee has turned off location services on their device"
+        else
+            "Employee has re-enabled location services"
+
+        val json = """{"employee_id":"$empId","timestamp":${System.currentTimeMillis()},"app_package":"location_service","app_name":"Location","type":"location_disabled","severity":"high","title":"$title","message":"$message"}"""
+
+        serviceScope.launch {
+            try {
+                val id = db.pendingAlertDao().insert(
+                    com.employeemonitor.db.entities.PendingAlertEntity(employeeId = empId, payload = json)
+                )
+
+                if (DeviceConfig.isNetworkAvailable(this@LocationService)) {
+                    val serverUrl = DeviceConfig.getServerUrl(this@LocationService)
+                    if (serverUrl.isNotEmpty()) {
+                        val body = json.toRequestBody("application/json".toMediaType())
+                        val request = Request.Builder()
+                            .url("$serverUrl/api/alerts")
+                            .post(body)
+                            .build()
+
+                        try {
+                            client.newCall(request).execute().use { response ->
+                                if (response.isSuccessful) {
+                                    db.pendingAlertDao().markSynced(id)
+                                    Log.d(TAG, "Location status alert sent: $status")
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to send location status alert: ${e.message}", e)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to buffer location status alert", e)
+            }
+        }
+    }
 
     private fun sendLocationData(location: Location) {
         val employeeId = DeviceConfig.getEmployeeId(this)
