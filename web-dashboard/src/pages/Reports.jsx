@@ -4,6 +4,8 @@ import { Bar, Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { format, subDays } from 'date-fns';
 import { reportAPI, employeeAPI } from '../services/api';
+import { Assessment as AssessmentIcon } from '@mui/icons-material';
+import PageHeader from '../components/PageHeader';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -74,7 +76,11 @@ export default function Reports() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight="bold" mb={3}>Reports</Typography>
+      <PageHeader
+        icon={<AssessmentIcon />}
+        title="Reports"
+        subtitle="Daily and weekly summaries ready for review"
+      />
       <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
         <TextField type="date" size="small" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
         <TextField select size="small" value={selectedEmployee} onChange={(e) => setSelectedEmployee(e.target.value)} sx={{ minWidth: 200 }}>

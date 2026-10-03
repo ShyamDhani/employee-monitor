@@ -1,12 +1,20 @@
 import { useState, useEffect } from 'react';
 import {
-  Box, Card, CardContent, Typography, TextField, MenuItem, Grid,
-  Pagination, IconButton, Dialog, DialogContent, Tabs, Tab,
-  Chip, Badge, ImageList, ImageListItem, ImageListItemBar
+  Box, Card, CardContent, Typography, TextField, MenuItem,
+  Pagination, IconButton, Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, Chip, CircularProgress, Snackbar, Alert,
+  ToggleButton, ToggleButtonGroup, Tooltip, Stack, Avatar
 } from '@mui/material';
-import { ZoomIn as ZoomInIcon, Close as CloseIcon, Apps as AppsIcon, ViewModule as GridIcon } from '@mui/icons-material';
+import {
+  ZoomIn as ZoomInIcon, Close as CloseIcon, Apps as AppsIcon,
+  ViewModule as GridIcon, DeleteOutline as DeleteIcon, Refresh as RefreshIcon,
+  ImageSearch as ImageSearchIcon, CalendarToday as CalendarIcon,
+  Person as PersonIcon
+} from '@mui/icons-material';
 import { format } from 'date-fns';
 import { screenshotAPI, employeeAPI } from '../services/api';
+import { friendlyAppName } from '../utils/appNames';
+import PageHeader from '../components/PageHeader';
 
 export default function Screenshots() {
   const [screenshots, setScreenshots] = useState([]);
@@ -20,6 +28,9 @@ export default function Screenshots() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState(0);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [snackbar, setSnackbar] = useState(null);
 
   useEffect(() => {
     fetchEmployees();
@@ -74,126 +85,442 @@ export default function Screenshots() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await screenshotAPI.delete(deleteTarget._id);
+      setScreenshots((prev) => prev.filter((s) => s._id !== deleteTarget._id));
+      if (selectedImage?._id === deleteTarget._id) setSelectedImage(null);
+      setDeleteTarget(null);
+      setSnackbar({ severity: 'success', message: 'Screenshot deleted' });
+      fetchAppGroups();
+    } catch (error) {
+      console.error('Failed to delete screenshot:', error);
+      setSnackbar({ severity: 'error', message: 'Could not delete this screenshot' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const tileActions = (screenshot) => (
+    <Box
+      className="em-tile-actions"
+      onClick={(e) => e.stopPropagation()}
+      sx={{
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        display: 'flex',
+        gap: 0.75,
+        opacity: 0,
+        transform: 'translateY(-6px)',
+        transition: 'opacity 0.18s ease, transform 0.18s ease',
+      }}
+    >
+      <Tooltip title="View">
+        <IconButton
+          size="small"
+          onClick={() => setSelectedImage(screenshot)}
+          sx={{
+            bgcolor: 'rgba(10,13,20,0.82)',
+            color: '#e2e8f0',
+            border: '1px solid rgba(148,163,184,0.28)',
+            '&:hover': { bgcolor: 'rgba(6,182,212,0.85)', color: '#04141a' },
+          }}
+        >
+          <ZoomInIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+      <Tooltip title="Delete screenshot">
+        <IconButton
+          size="small"
+          onClick={() => setDeleteTarget(screenshot)}
+          sx={{
+            bgcolor: 'rgba(10,13,20,0.82)',
+            color: '#fca5a5',
+            border: '1px solid rgba(248,113,113,0.35)',
+            '&:hover': { bgcolor: '#ef4444', color: '#fff' },
+          }}
+        >
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    </Box>
+  );
+
+  const renderTile = (screenshot) => (
+    <Box
+      key={screenshot._id}
+      onClick={() => setSelectedImage(screenshot)}
+      sx={{
+        position: 'relative',
+        borderRadius: 2.5,
+        overflow: 'hidden',
+        cursor: 'pointer',
+        border: '1px solid rgba(148,163,184,0.14)',
+        backgroundColor: '#0d1117',
+        transition: 'transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease',
+        '&:hover': {
+          transform: 'translateY(-3px)',
+          borderColor: 'rgba(6,182,212,0.55)',
+          boxShadow: '0 14px 34px rgba(0,0,0,0.45)',
+        },
+        '&:hover .em-tile-actions': { opacity: 1, transform: 'translateY(0)' },
+      }}
+    >
+      <Box
+        component="img"
+        src={screenshot.imageUrl}
+        alt={screenshot.appPackage || 'Screenshot'}
+        loading="lazy"
+        sx={{ width: '100%', height: 176, objectFit: 'cover', display: 'block' }}
+      />
+      <Box
+        sx={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(180deg, rgba(10,13,20,0.35) 0%, transparent 35%, rgba(10,13,20,0.88) 100%)',
+          pointerEvents: 'none',
+        }}
+      />
+      {tileActions(screenshot)}
+      <Box sx={{ position: 'absolute', left: 0, right: 0, bottom: 0, p: 1.5 }}>
+        <Typography
+          variant="body2"
+          fontWeight={700}
+          noWrap
+          sx={{ color: '#f1f5f9', display: 'flex', alignItems: 'center', gap: 0.75 }}
+        >
+          <AppsIcon sx={{ fontSize: 14, color: '#22d3ee' }} />
+          {friendlyAppName(screenshot.appPackage)}
+        </Typography>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 0.25 }}>
+          <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+            {screenshot.employeeId}
+          </Typography>
+          <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+            {format(new Date(screenshot.timestamp), 'HH:mm:ss')}
+          </Typography>
+        </Stack>
+      </Box>
+    </Box>
+  );
+
+  const emptyState = (title, message) => (
+    <Card sx={{ borderStyle: 'dashed' }}>
+      <CardContent sx={{ textAlign: 'center', py: 7 }}>
+        <Avatar
+          sx={{
+            width: 64, height: 64, mx: 'auto', mb: 2,
+            bgcolor: 'rgba(6,182,212,0.12)', color: '#22d3ee',
+            backgroundImage: 'none', border: '1px dashed rgba(6,182,212,0.35)',
+          }}
+        >
+          <ImageSearchIcon sx={{ fontSize: 30 }} />
+        </Avatar>
+        <Typography variant="h6" sx={{ color: '#e2e8f0' }}>{title}</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>{message}</Typography>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <Box>
-      <Typography variant="h5" fontWeight="bold" mb={3}>Screenshots</Typography>
+      <PageHeader
+        icon={<ImageSearchIcon />}
+        title="Screenshots"
+        subtitle="Captured screens grouped by app, employee and time"
+        actions={
+          <>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={viewMode}
+              onChange={(_, v) => v !== null && setViewMode(v)}
+              sx={{ '& .MuiToggleButton-root': { px: 2, borderRightWidth: 1 } }}
+            >
+              <ToggleButton value={0}><GridIcon fontSize="small" sx={{ mr: 0.75 }} />Grid</ToggleButton>
+              <ToggleButton value={1}><AppsIcon fontSize="small" sx={{ mr: 0.75 }} />By app</ToggleButton>
+            </ToggleButtonGroup>
+            <Tooltip title="Reload">
+              <IconButton onClick={() => { fetchScreenshots(); fetchAppGroups(); }} disabled={loading}>
+                <RefreshIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </>
+        }
+      />
 
-      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
-        <TextField type="date" size="small" value={selectedDate}
-          onChange={(e) => { setSelectedDate(e.target.value); setPage(1); }} />
-        <TextField select size="small" value={selectedEmployee}
-          onChange={(e) => { setSelectedEmployee(e.target.value); setSelectedApp('all'); setPage(1); }} sx={{ minWidth: 200 }}>
-          <MenuItem value="all">All Employees</MenuItem>
-          {employees.map((emp) => (
-            <MenuItem key={emp.employeeId} value={emp.employeeId}>{emp.name}</MenuItem>
-          ))}
-        </TextField>
-        <TextField select size="small" value={selectedApp}
-          onChange={(e) => { setSelectedApp(e.target.value); setPage(1); }} sx={{ minWidth: 200 }}>
-          <MenuItem value="all">All Apps</MenuItem>
-          {appGroups.map((app) => (
-            <MenuItem key={app.appPackage} value={app.appPackage}>
-              {app.appPackage} ({app.count})
-            </MenuItem>
-          ))}
-        </TextField>
-      </Box>
+      <Card sx={{ mb: 3 }}>
+        <CardContent sx={{ py: 2, '&:last-child': { pb: 2 } }}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+            <TextField
+              type="date"
+              size="small"
+              label="Date"
+              value={selectedDate}
+              onChange={(e) => { setSelectedDate(e.target.value); setPage(1); }}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: 190 }}
+              InputProps={{
+                startAdornment: <CalendarIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />,
+              }}
+            />
+            <TextField
+              select
+              size="small"
+              label="Employee"
+              value={selectedEmployee}
+              onChange={(e) => { setSelectedEmployee(e.target.value); setSelectedApp('all'); setPage(1); }}
+              sx={{ minWidth: 210 }}
+              SelectProps={{ displayEmpty: true }}
+            >
+              <MenuItem value="all">All Employees</MenuItem>
+              {employees.map((emp) => (
+                <MenuItem key={emp.employeeId} value={emp.employeeId}>{emp.name}</MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              size="small"
+              label="App"
+              value={selectedApp}
+              onChange={(e) => { setSelectedApp(e.target.value); setPage(1); }}
+              sx={{ minWidth: 230 }}
+            >
+              <MenuItem value="all">All Apps</MenuItem>
+              {appGroups.map((app) => (
+                <MenuItem key={app.appPackage} value={app.appPackage}>
+                  {app.appPackage} ({app.count})
+                </MenuItem>
+              ))}
+            </TextField>
 
-      <Tabs value={viewMode} onChange={(_, v) => setViewMode(v)} sx={{ mb: 2 }}>
-        <Tab icon={<GridIcon />} label="All Screenshots" />
-        <Tab icon={<AppsIcon />} label="Grouped by App" />
-      </Tabs>
+            <Box sx={{ flexGrow: 1 }} />
+
+            <Chip
+              size="small"
+              icon={<PersonIcon />}
+              label={`${screenshots.length} captured`}
+              color="primary"
+            />
+          </Box>
+        </CardContent>
+      </Card>
 
       {viewMode === 0 && (
         <>
-          <ImageList cols={4} gap={12}>
-            {screenshots.map((screenshot) => (
-              <ImageListItem key={screenshot._id} sx={{ cursor: 'pointer', '&:hover': { boxShadow: 4 } }}
-                onClick={() => setSelectedImage(screenshot)}>
-                <img
-                  src={screenshot.imageUrl}
-                  alt={`Screenshot`}
-                  loading="lazy"
-                  style={{ borderRadius: 4, height: 200, objectFit: 'cover' }}
-                />
-                <ImageListItemBar
-                  title={screenshot.appPackage || 'Unknown'}
-                  subtitle={`${screenshot.employeeId} - ${format(new Date(screenshot.timestamp), 'HH:mm:ss')}`}
-                />
-              </ImageListItem>
-            ))}
-          </ImageList>
-          {screenshots.length === 0 && !loading && (
-            <Card><CardContent><Typography textAlign="center" py={4} color="text.secondary">
-              No screenshots found for this date
-            </Typography></CardContent></Card>
+          {loading && screenshots.length === 0 ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+              <CircularProgress size={36} />
+            </Box>
+          ) : screenshots.length === 0 ? (
+            emptyState('No screenshots found', 'Try another date, employee or app filter.')
+          ) : (
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                gridTemplateColumns: {
+                  xs: 'repeat(auto-fill, minmax(160px, 1fr))',
+                  sm: 'repeat(auto-fill, minmax(220px, 1fr))',
+                  lg: 'repeat(auto-fill, minmax(260px, 1fr))',
+                },
+              }}
+            >
+              {screenshots.map(renderTile)}
+            </Box>
+          )}
+
+          {totalPages > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+              <Pagination count={totalPages} page={page} onChange={(_, v) => setPage(v)} color="primary" />
+            </Box>
           )}
         </>
       )}
 
       {viewMode === 1 && (
         <Box>
-          {appGroups.length === 0 && (
-            <Card><CardContent><Typography textAlign="center" py={4} color="text.secondary">
-              No app data found for this date
-            </Typography></CardContent></Card>
-          )}
-          {appGroups.map((app) => (
-            <Card key={app.appPackage} sx={{ mb: 2 }}>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                  <Typography variant="h6" fontWeight="bold">{app.appPackage}</Typography>
-                  <Chip label={`${app.count} screenshots`} size="small" color="primary" />
-                  <Typography variant="caption" color="text.secondary">
-                    Last used: {format(new Date(app.lastUsed), 'MMM dd, HH:mm:ss')}
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', pb: 1 }}>
-                  {screenshots
-                    .filter((s) => s.appPackage === app.appPackage)
-                    .slice(0, 6)
-                    .map((screenshot) => (
-                      <Box key={screenshot._id} onClick={() => setSelectedImage(screenshot)}
-                        sx={{ minWidth: 200, cursor: 'pointer', '&:hover': { opacity: 0.8 } }}>
-                        <img src={screenshot.imageUrl} alt="Screenshot"
-                          style={{ width: 200, height: 120, objectFit: 'cover', borderRadius: 4 }} />
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          {format(new Date(screenshot.timestamp), 'HH:mm:ss')}
-                        </Typography>
-                      </Box>
-                    ))}
-                </Box>
-              </CardContent>
-            </Card>
-          ))}
+          {appGroups.length === 0 && !loading && emptyState('No app data found', 'No screenshots were captured on this date.')}
+          {appGroups.map((app) => {
+            const groupShots = screenshots.filter((s) => s.appPackage === app.appPackage).slice(0, 8);
+            return (
+              <Card key={app.appPackage} sx={{ mb: 2.5 }}>
+                <CardContent>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1.5,
+                      mb: 2,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Avatar
+                      sx={{
+                        width: 40, height: 40, borderRadius: 2,
+                        bgcolor: 'rgba(6,182,212,0.14)', color: '#22d3ee', backgroundImage: 'none',
+                      }}
+                    >
+                      <AppsIcon fontSize="small" />
+                    </Avatar>
+                    <Box sx={{ flexGrow: 1, minWidth: 180 }}>
+                      <Typography fontWeight={700}>{friendlyAppName(app.appPackage)}</Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
+                        {app.appPackage} · last used {format(new Date(app.lastUsed), 'MMM dd, HH:mm:ss')}
+                      </Typography>
+                    </Box>
+                    <Chip label={`${app.count} screenshots`} size="small" color="primary" />
+                  </Box>
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gap: 1.5,
+                      gridTemplateColumns: {
+                        xs: 'repeat(auto-fill, minmax(150px, 1fr))',
+                        md: 'repeat(auto-fill, minmax(200px, 1fr))',
+                      },
+                    }}
+                  >
+                    {groupShots.length === 0 ? (
+                      <Typography variant="caption" color="text.secondary">
+                        Thumbnails load on the grid view for this page.
+                      </Typography>
+                    ) : (
+                      groupShots.map(renderTile)
+                    )}
+                  </Box>
+                </CardContent>
+              </Card>
+            );
+          })}
         </Box>
       )}
 
-      {viewMode === 0 && totalPages > 1 && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-          <Pagination count={totalPages} page={page} onChange={(_, v) => setPage(v)} />
-        </Box>
-      )}
-
-      <Dialog open={!!selectedImage} onClose={() => setSelectedImage(null)} maxWidth="lg" fullWidth>
-        <DialogContent sx={{ p: 0, position: 'relative' }}>
-          <IconButton onClick={() => setSelectedImage(null)}
-            sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1, backgroundColor: 'rgba(0,0,0,0.5)', '&:hover': { backgroundColor: 'rgba(0,0,0,0.7)' } }}>
-            <CloseIcon sx={{ color: 'white' }} />
-          </IconButton>
+      <Dialog
+        open={!!selectedImage}
+        onClose={() => setSelectedImage(null)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { overflow: 'hidden', bgcolor: '#0a0d14' } }}
+      >
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            px: 2.5,
+            py: 1.5,
+            bgcolor: 'rgba(18,22,31,0.96)',
+            borderBottom: '1px solid rgba(148,163,184,0.14)',
+          }}
+        >
+          <ImageSearchIcon fontSize="small" sx={{ color: '#22d3ee' }} />
+          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+            <Typography variant="subtitle1" noWrap>
+              {selectedImage ? friendlyAppName(selectedImage.appPackage) : ''}
+            </Typography>
+            <Stack direction="row" spacing={1.5} sx={{ flexWrap: 'wrap' }}>
+              <Typography variant="caption" color="text.secondary">
+                {selectedImage?.employeeId}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {selectedImage && format(new Date(selectedImage.timestamp), 'MMM dd, yyyy HH:mm:ss')}
+              </Typography>
+            </Stack>
+          </Box>
           {selectedImage && (
-            <Box>
-              <img src={selectedImage.imageUrl} alt="Screenshot" style={{ width: '100%', height: 'auto' }} />
-              <Box sx={{ p: 2, position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.7)' }}>
-                <Typography color="white" fontWeight="bold">{selectedImage.appPackage || 'Unknown app'}</Typography>
-                <Typography color="white" variant="caption">
-                  {selectedImage.employeeId} | {format(new Date(selectedImage.timestamp), 'MMM dd, yyyy HH:mm:ss')}
-                </Typography>
-              </Box>
-            </Box>
+            <Tooltip title="Delete screenshot">
+              <IconButton
+                onClick={() => setDeleteTarget(selectedImage)}
+                sx={{
+                  color: '#fca5a5',
+                  border: '1px solid rgba(248,113,113,0.35)',
+                  '&:hover': { bgcolor: 'rgba(248,113,113,0.16)' },
+                }}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+          <IconButton onClick={() => setSelectedImage(null)} sx={{ color: '#94a3b8' }}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0, bgcolor: '#05070b' }}>
+          {selectedImage && (
+            <Box
+              component="img"
+              src={selectedImage.imageUrl}
+              alt="Screenshot"
+              sx={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', display: 'block' }}
+            />
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={!!deleteTarget}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+          <Avatar
+            sx={{
+              width: 36, height: 36, bgcolor: 'rgba(248,113,113,0.14)',
+              color: '#fca5a5', backgroundImage: 'none',
+            }}
+          >
+            <DeleteIcon fontSize="small" />
+          </Avatar>
+          Delete screenshot?
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            This permanently removes the capture from{' '}
+            <Box component="span" sx={{ color: '#e2e8f0', fontWeight: 600 }}>
+              {deleteTarget ? friendlyAppName(deleteTarget.appPackage) : ''}
+            </Box>{' '}
+            taken at {deleteTarget ? format(new Date(deleteTarget.timestamp), 'MMM dd, yyyy HH:mm') : ''}. This action
+            cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5 }}>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleting} color="inherit">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDelete}
+            disabled={deleting}
+            variant="contained"
+            color="error"
+            startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : <DeleteIcon />}
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={!!snackbar}
+        autoHideDuration={3500}
+        onClose={() => setSnackbar(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        {snackbar && (
+          <Alert
+            onClose={() => setSnackbar(null)}
+            severity={snackbar.severity}
+            variant="filled"
+            sx={{ borderRadius: 2, fontWeight: 600 }}
+          >
+            {snackbar.message}
+          </Alert>
+        )}
+      </Snackbar>
     </Box>
   );
 }

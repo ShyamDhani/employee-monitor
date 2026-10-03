@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Box, Card, CardContent, Typography, TextField, MenuItem, Grid, Avatar, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
-import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
+import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon, People as PeopleIcon } from '@mui/icons-material';
 import { employeeAPI } from '../services/api';
 import useWebSocket from '../hooks/useWebSocket';
+import PageHeader from '../components/PageHeader';
 
 export default function Employees() {
   const [employees, setEmployees] = useState([]);
@@ -70,12 +71,16 @@ export default function Employees() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" fontWeight="bold">Employees</Typography>
-        <Button startIcon={<AddIcon />} variant="contained" onClick={() => { setEditingEmployee(null); setFormData({ employee_id: '', name: '', email: '', department: '', group: '' }); setOpenDialog(true); }}>
-          Add Employee
-        </Button>
-      </Box>
+      <PageHeader
+        icon={<PeopleIcon />}
+        title="Employees"
+        subtitle="Registered people, departments and device status"
+        actions={
+          <Button startIcon={<AddIcon />} variant="contained" onClick={() => { setEditingEmployee(null); setFormData({ employee_id: '', name: '', email: '', department: '', group: '' }); setOpenDialog(true); }}>
+            Add Employee
+          </Button>
+        }
+      />
       <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
         <TextField size="small" placeholder="Search employees..." value={search} onChange={(e) => { setSearch(e.target.value); fetchEmployees(); }} sx={{ minWidth: 250 }} />
         <TextField select size="small" value={filter} onChange={(e) => { setFilter(e.target.value); fetchEmployees(); }} sx={{ minWidth: 120 }}>

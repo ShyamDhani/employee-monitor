@@ -15,6 +15,7 @@ import { setEmployees, setSelectedEmployee, setActivities, setStats } from '../s
 import { employeeAPI, activityAPI, reportAPI } from '../services/api';
 import useWebSocket from '../hooks/useWebSocket';
 import LiveScreenshots from '../components/Monitoring/LiveScreenshots';
+import PageHeader from '../components/PageHeader';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -114,19 +115,23 @@ export default function LiveMonitor() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" fontWeight="bold">Live Monitor</Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <TextField select size="small" value={filter} onChange={(e) => setFilter(e.target.value)} sx={{ minWidth: 120 }}>
-            <MenuItem value="all">All</MenuItem>
-            <MenuItem value="online">Online</MenuItem>
-            <MenuItem value="offline">Offline</MenuItem>
-          </TextField>
-          <IconButton onClick={handleRefresh} disabled={loading}>
-            <RefreshIcon />
-          </IconButton>
-        </Box>
-      </Box>
+      <PageHeader
+        icon={<ScreenIcon />}
+        title="Live Monitor"
+        subtitle="Watch devices, push commands and stream captures in real time"
+        actions={
+          <>
+            <TextField select size="small" value={filter} onChange={(e) => setFilter(e.target.value)} sx={{ minWidth: 130 }}>
+              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="online">Online</MenuItem>
+              <MenuItem value="offline">Offline</MenuItem>
+            </TextField>
+            <IconButton onClick={handleRefresh} disabled={loading} sx={{ border: '1px solid rgba(148,163,184,0.22)' }}>
+              <RefreshIcon />
+            </IconButton>
+          </>
+        }
+      />
 
       <LiveScreenshots liveEmployees={onlineEmployees} />
 

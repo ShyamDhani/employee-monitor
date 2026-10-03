@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Box, Card, CardContent, Typography, TextField, Button, Switch, FormControlLabel, Grid, Alert, Divider, CircularProgress } from '@mui/material';
-import { Save as SaveIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import { Save as SaveIcon, Refresh as RefreshIcon, Settings as SettingsIcon } from '@mui/icons-material';
+import PageHeader from '../components/PageHeader';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -91,10 +92,16 @@ export default function SettingsPage() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" fontWeight="bold">Settings</Typography>
-        <Button startIcon={<RefreshIcon />} onClick={fetchSettings}>Reload</Button>
-      </Box>
+      <PageHeader
+        icon={<SettingsIcon />}
+        title="Settings"
+        subtitle="Monitoring intervals, retention and notification rules"
+        actions={
+          <Button startIcon={<RefreshIcon />} onClick={fetchSettings} variant="outlined">
+            Reload
+          </Button>
+        }
+      />
       {saved && <Alert severity="success" sx={{ mb: 3 }}>Settings saved to server successfully</Alert>}
       {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
       <Grid container spacing={3}>

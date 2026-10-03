@@ -4,6 +4,8 @@ import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Title, Tooltip, Legend, Filler } from 'chart.js';
 import { format, subDays } from 'date-fns';
 import { reportAPI, employeeAPI } from '../services/api';
+import { BarChart as BarChartIcon } from '@mui/icons-material';
+import PageHeader from '../components/PageHeader';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
@@ -66,7 +68,11 @@ export default function Analytics() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight="bold" mb={3}>Analytics</Typography>
+      <PageHeader
+        icon={<BarChartIcon />}
+        title="Analytics"
+        subtitle="Productivity scores, app usage trends and focus patterns"
+      />
       <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
         <TextField type="date" size="small" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
         <TextField select size="small" value={selectedEmployee} onChange={(e) => setSelectedEmployee(e.target.value)} sx={{ minWidth: 200 }}>

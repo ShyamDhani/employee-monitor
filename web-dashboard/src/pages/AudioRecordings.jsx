@@ -7,6 +7,7 @@ import {
 import {
   PlayArrow, Pause, Stop, Delete, Refresh, Mic, Download, AccessTime
 } from '@mui/icons-material';
+import PageHeader from '../components/PageHeader';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -166,29 +167,30 @@ export default function AudioRecordings() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" fontWeight="bold">
-          <Mic sx={{ mr: 1, verticalAlign: 'middle' }} />
-          Audio Recordings ({audios.length})
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <TextField
-            select size="small" value={selectedEmployee}
-            onChange={(e) => setSelectedEmployee(e.target.value)}
-            sx={{ minWidth: 150 }}
-          >
-            <MenuItem value="all">All Employees</MenuItem>
-            {employees.map((emp) => (
-              <MenuItem key={emp.employeeId} value={emp.employeeId}>
-                {emp.name || emp.employeeId}
-              </MenuItem>
-            ))}
-          </TextField>
-          <Button variant="outlined" startIcon={<Refresh />} onClick={() => { setLoading(true); loadAudios(); }}>
-            Refresh
-          </Button>
-        </Box>
-      </Box>
+      <PageHeader
+        icon={<Mic />}
+        title="Audio Recordings"
+        subtitle={`${audios.length} clips captured from monitored devices`}
+        actions={
+          <>
+            <TextField
+              select size="small" value={selectedEmployee}
+              onChange={(e) => setSelectedEmployee(e.target.value)}
+              sx={{ minWidth: 170 }}
+            >
+              <MenuItem value="all">All Employees</MenuItem>
+              {employees.map((emp) => (
+                <MenuItem key={emp.employeeId} value={emp.employeeId}>
+                  {emp.name || emp.employeeId}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Button variant="outlined" startIcon={<Refresh />} onClick={() => { setLoading(true); loadAudios(); }}>
+              Refresh
+            </Button>
+          </>
+        }
+      />
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>

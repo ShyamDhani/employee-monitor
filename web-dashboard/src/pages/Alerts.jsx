@@ -13,6 +13,9 @@ import {
 } from '@mui/icons-material';
 import { alertAPI } from '../services/api';
 import { displayAppName } from '../utils/appNames';
+import PageHeader from '../components/PageHeader';
+
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 const severityConfig = {
   low: { color: 'info', icon: <InfoIcon />, bg: 'rgba(33, 150, 243, 0.15)' },
@@ -133,22 +136,24 @@ export default function Alerts() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography variant="h5" fontWeight="bold">Alerts</Typography>
-          <Badge badgeContent={stats.unread} color="error" max={99}>
-            <AlertActiveIcon color="error" />
-          </Badge>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button startIcon={<MarkReadIcon />} onClick={handleMarkAllAsRead} disabled={stats.unread === 0}>
-            Mark All Read
-          </Button>
-          <IconButton onClick={() => { fetchAlerts(); fetchStats(); }}>
-            <RefreshIcon />
-          </IconButton>
-        </Box>
-      </Box>
+      <PageHeader
+        icon={<AlertActiveIcon />}
+        title="Alerts"
+        subtitle="Policy violations and flagged activity across the team"
+        actions={
+          <>
+            <Badge badgeContent={stats.unread} color="error" max={99}>
+              <Chip size="small" label={`${stats.unread} unread`} color="error" variant="outlined" />
+            </Badge>
+            <Button startIcon={<MarkReadIcon />} onClick={handleMarkAllAsRead} disabled={stats.unread === 0}>
+              Mark All Read
+            </Button>
+            <IconButton onClick={() => { fetchAlerts(); fetchStats(); }} sx={{ border: '1px solid rgba(148,163,184,0.22)' }}>
+              <RefreshIcon />
+            </IconButton>
+          </>
+        }
+      />
 
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} md={4}>

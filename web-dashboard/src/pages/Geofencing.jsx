@@ -9,6 +9,7 @@ import {
   Warning, CheckCircle, GpsFixed
 } from '@mui/icons-material';
 import EmployeeGoogleMap from '../components/GoogleMap';
+import PageHeader from '../components/PageHeader';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -134,14 +135,18 @@ export default function Geofencing() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h5" fontWeight="bold">Geofencing & Location Tracking</Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button variant="outlined" startIcon={<Refresh />} onClick={fetchLocations}>Refresh</Button>
-          <Button variant="contained" startIcon={<GpsFixed />} onClick={checkGeofences}>Check Geofences</Button>
-          <Button variant="contained" startIcon={<Add />} onClick={handleAddFence}>Add Geofence</Button>
-        </Box>
-      </Box>
+      <PageHeader
+        icon={<LocationOn />}
+        title="Geofencing & Location Tracking"
+        subtitle="Live device positions, zone coverage and fence rules"
+        actions={
+          <>
+            <Button variant="outlined" startIcon={<Refresh />} onClick={fetchLocations}>Refresh</Button>
+            <Button variant="contained" startIcon={<GpsFixed />} onClick={checkGeofences}>Check Geofences</Button>
+            <Button variant="contained" startIcon={<Add />} onClick={handleAddFence}>Add Geofence</Button>
+          </>
+        }
+      />
 
       <Grid container spacing={3}>
         <Grid item xs={12} md={8}>

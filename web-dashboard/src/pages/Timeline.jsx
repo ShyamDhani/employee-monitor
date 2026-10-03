@@ -5,7 +5,9 @@ import {
   ToggleButton, ToggleButtonGroup, Divider
 } from '@mui/material';
 import { format, addHours, startOfDay, differenceInMinutes } from 'date-fns';
+import { Timeline as TimelineIcon } from '@mui/icons-material';
 import { activityAPI, employeeAPI } from '../services/api';
+import PageHeader from '../components/PageHeader';
 
 const COLORS = [
   '#1976D2','#388E3C','#F57C00','#D32F2F','#7B1FA2','#00796B',
@@ -156,10 +158,11 @@ export default function Timeline() {
 
   return (
     <Box>
-      <Typography variant="h5" fontWeight="bold" mb={1}>Timeline</Typography>
-      <Typography variant="body2" color="text.secondary" mb={2}>
-        App usage periods showing when each application was active on the device (ManicTime-style)
-      </Typography>
+      <PageHeader
+        icon={<TimelineIcon />}
+        title="Timeline"
+        subtitle="App usage periods showing when each application was active on the device (ManicTime-style)"
+      />
 
       <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center', flexWrap: 'wrap' }}>
         <TextField type="date" size="small" value={selectedDate}
