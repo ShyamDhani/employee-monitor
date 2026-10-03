@@ -182,11 +182,18 @@ export default function LiveMonitor() {
                 <Chip size="small" color="primary" label={`${filteredEmployees.length} of ${employees.length}`} />
               </Box>
               <Divider sx={{ mb: 1.5 }} />
-              <Box sx={{ maxHeight: 620, overflow: 'auto' }}>
+              <Box sx={{ maxHeight: filteredEmployees.length ? 620 : 'auto', overflow: filteredEmployees.length ? 'auto' : 'visible' }}>
                 {filteredEmployees.length === 0 && (
-                  <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
-                    <GroupsIcon sx={{ fontSize: 40, mb: 1, opacity: 0.6 }} />
-                    <Typography variant="body2">No employees match this filter</Typography>
+                  <Box sx={{ textAlign: 'center', py: 5, px: 2, color: 'text.secondary' }}>
+                    <GroupsIcon sx={{ fontSize: 40, mb: 1, opacity: 0.55 }} />
+                    <Typography variant="body2" fontWeight={600} sx={{ color: '#cbd5e1' }}>
+                      {employees.length === 0 ? 'No employees registered yet' : 'No employees match this filter'}
+                    </Typography>
+                    <Typography variant="caption">
+                      {employees.length === 0
+                        ? 'Enrol a device to start seeing people here'
+                        : 'Switch the filter above to see the full team'}
+                    </Typography>
                   </Box>
                 )}
                 {filteredEmployees.map((employee) => {
@@ -362,11 +369,14 @@ export default function LiveMonitor() {
                 <Chip size="small" label={`${activities.length}`} color="primary" variant="outlined" />
               </Box>
               <Divider sx={{ mb: 1.5 }} />
-              <Box sx={{ maxHeight: 320, overflow: 'auto' }}>
+              <Box sx={{ maxHeight: activities.length ? 320 : 'auto', overflow: activities.length ? 'auto' : 'visible' }}>
                 {activities.length === 0 && (
-                  <Box sx={{ textAlign: 'center', py: 5, color: 'text.secondary' }}>
-                    <ScheduleIcon sx={{ fontSize: 34, mb: 1, opacity: 0.6 }} />
-                    <Typography variant="body2">No activity reported yet</Typography>
+                  <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+                    <ScheduleIcon sx={{ fontSize: 34, mb: 1, opacity: 0.55 }} />
+                    <Typography variant="body2" fontWeight={600} sx={{ color: '#cbd5e1' }}>
+                      No activity reported yet
+                    </Typography>
+                    <Typography variant="caption">Live app usage will stream in here</Typography>
                   </Box>
                 )}
                 {activities.slice(0, 10).map((activity, index) => (

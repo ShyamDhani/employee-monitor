@@ -77,9 +77,10 @@ export default function LiveScreenshots({ liveEmployees = [] }) {
             </Typography>
             <Chip
               size="small"
-              color={isLive ? 'error' : newCapture ? 'success' : 'primary'}
-              label={isLive ? 'LIVE' : newCapture ? 'New capture' : 'Live'}
+              color={isLive ? 'error' : newCapture ? 'success' : 'default'}
+              label={isLive ? 'LIVE' : newCapture ? 'New capture' : 'Polling every 30s'}
               icon={<CameraIcon />}
+              sx={{ fontWeight: 700 }}
             />
           </Box>
           <Typography variant="caption" color="text.secondary">
