@@ -32,6 +32,8 @@ const typeLabels = {
   excessive_break: 'Excessive Break',
   suspicious_behavior: 'Suspicious Behavior',
   device_offline: 'Device Offline',
+  location_disabled: 'Location Disabled',
+  location_restored: 'Location Re-enabled',
   custom: 'Custom',
 };
 

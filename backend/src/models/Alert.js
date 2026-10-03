@@ -16,6 +16,8 @@ const alertSchema = new mongoose.Schema({
       'unauthorized_app',
       'suspicious_behavior',
       'device_offline',
+      'location_disabled',
+      'location_restored',
       'custom'
     ],
     required: true

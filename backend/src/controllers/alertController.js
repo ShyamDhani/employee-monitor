@@ -34,7 +34,7 @@ exports.createAlert = async (req, res) => {
 
     const alert = await Alert.create({
       employeeId: employee_id,
-      type: type || 'unauthorized_app',
+      type: Alert.schema.path('type').enumValues.includes(type) ? type : 'custom',
       severity: severity || 'high',
       title: title || `Unprofessional App: ${app_name}`,
       message: message || `Employee opened blocked app: ${app_name}`,
