@@ -1,11 +1,58 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, Popup, useMap } from 'react-leaflet';
 import { Box, Typography, Card, CardContent, Chip, CircularProgress } from '@mui/material';
-import { CheckCircle, Warning } from '@mui/icons-material';
+import { CheckCircle, Warning, TravelExplore } from '@mui/icons-material';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 const DEFAULT_CENTER = { lat: 28.6139, lng: 77.2090 };
+
+// Free, keyless basemaps. Tried in order when tiles fail to load.
+const TILE_SOURCES = [
+  {
+    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
+  },
+  {
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  },
+  {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ',
+  },
+];
+
+const addressCache = {};
+
+function AddressLine({ lat, lng }) {
+  const [address, setAddress] = useState(null);
+  const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+
+  useEffect(() => {
+    let alive = true;
+    if (addressCache[key]) {
+      setAddress(addressCache[key]);
+      return () => { alive = false; };
+    }
+    setAddress('Looking up address…');
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=16`)
+      .then((r) => r.json())
+      .then((data) => {
+        const line = data.display_name || 'Address not found';
+        addressCache[key] = line;
+        if (alive) setAddress(line);
+      })
+      .catch(() => { if (alive) setAddress('Address lookup unavailable'); });
+    return () => { alive = false; };
+  }, [key, lat, lng]);
+
+  return (
+    <div style={{ fontSize: 12, color: '#666', marginBottom: 6, lineHeight: 1.35 }}>
+      {address}
+    </div>
+  );
+}
 
 const createIcon = (color) => {
   return L.divIcon({
@@ -41,10 +88,27 @@ export default function EmployeeGoogleMap({
   height = 500,
 }) {
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const [tileSource, setTileSource] = useState(0);
+  const [tileErrors, setTileErrors] = useState(0);
+
+  const handleTileError = useCallback(() => {
+    setTileErrors((n) => {
+      const next = n + 1;
+      if (next >= 4) {
+        setTileSource((s) => (s + 1) % TILE_SOURCES.length);
+        return 0;
+      }
+      return next;
+    });
+  }, []);
 
   const filteredLocations = useMemo(() => {
-    if (selectedEmployee === 'all') return locations;
-    return locations.filter((l) => l.employeeId === selectedEmployee);
+    const valid = (l) =>
+      typeof l?.latitude === 'number' && typeof l?.longitude === 'number' &&
+      !Number.isNaN(l.latitude) && !Number.isNaN(l.longitude);
+    const list = locations.filter(valid);
+    if (selectedEmployee === 'all') return list;
+    return list.filter((l) => l.employeeId === selectedEmployee);
   }, [locations, selectedEmployee]);
 
   const mapCenter = useMemo(() => {
@@ -79,8 +143,10 @@ export default function EmployeeGoogleMap({
         scrollWheelZoom={true}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          key={tileSource}
+          url={TILE_SOURCES[tileSource].url}
+          attribution={TILE_SOURCES[tileSource].attribution}
+          eventHandlers={{ tileerror: handleTileError }}
         />
 
         <MapUpdater center={mapCenter} />
@@ -112,6 +178,7 @@ export default function EmployeeGoogleMap({
                   <div style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>
                     Accuracy: {loc.accuracy?.toFixed(0) || 'N/A'}m
                   </div>
+                  <AddressLine lat={loc.latitude} lng={loc.longitude} />
                   {loc.speed > 0 && (
                     <div style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>
                       Speed: {(loc.speed * 3.6).toFixed(1)} km/h
@@ -161,15 +228,21 @@ export default function EmployeeGoogleMap({
             position: 'absolute',
             top: 0, left: 0, right: 0, bottom: 0,
             display: 'flex', justifyContent: 'center', alignItems: 'center',
-            flexDirection: 'column', gap: 1,
-            bgcolor: 'rgba(255,255,255,0.85)',
+            flexDirection: 'column', gap: 1, px: 3, textAlign: 'center',
+            bgcolor: 'rgba(10,13,20,0.78)',
+            backdropFilter: 'blur(3px)',
             zIndex: 1000,
             pointerEvents: 'none',
           }}
         >
-          <Typography color="text.secondary">No location data available</Typography>
-          <Typography variant="caption" color="text.secondary">
-            Ensure Android app has location permissions enabled
+          <TravelExplore sx={{ fontSize: 44, color: '#22d3ee' }} />
+          <Typography sx={{ color: '#e2e8f0', fontWeight: 600 }}>
+            Waiting for a device location
+          </Typography>
+          <Typography variant="caption" sx={{ color: '#94a3b8', maxWidth: 380 }}>
+            The map is live and needs a GPS fix from the phone. Keep location
+            permission granted on the Android app, or send a{' '}
+            <b>Track Location</b> command from Live Monitor.
           </Typography>
         </Box>
       )}
