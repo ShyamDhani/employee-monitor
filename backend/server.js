@@ -79,8 +79,15 @@ app.set('io', io);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/api/health', (req, res) => {
+  let db = null;
+  try {
+    db = require('./src/config/database').getStatus();
+  } catch (e) {
+    db = { state: 'unknown', lastError: e.message };
+  }
   res.json({
     status: 'ok',
+    db,
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
