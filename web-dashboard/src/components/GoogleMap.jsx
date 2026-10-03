@@ -8,21 +8,24 @@ import 'leaflet/dist/leaflet.css';
 const DEFAULT_CENTER = { lat: 28.6139, lng: 77.2090 };
 
 // Free, keyless basemaps (no account / no quota). Tried in order when tiles fail.
-// CARTO is last: it returns 200 "API KEY REQUIRED" placeholder tiles instead of errors.
+// Esri first: OSM's volunteer servers block heavy/unexpected clients by returning an
+// HTTP 200 "Access blocked" image, which never fires a tile error.
 const TILE_SOURCES = [
   {
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  },
-  {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ',
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, HERE, Garmin, FAO, NOAA, USGS',
   },
   {
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
     attribution: 'Map data: &copy; OpenStreetMap, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)',
   },
+  {
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  },
 ];
+
+const TILE_SIZE = 256;
 
 const addressCache = {};
 
@@ -92,7 +95,7 @@ export default function EmployeeGoogleMap({
   const [tileSource, setTileSource] = useState(0);
   const [tileErrors, setTileErrors] = useState(0);
 
-  const handleTileError = useCallback(() => {
+  const noteBadTile = useCallback(() => {
     setTileErrors((n) => {
       const next = n + 1;
       if (next >= 4) {
@@ -102,6 +105,14 @@ export default function EmployeeGoogleMap({
       return next;
     });
   }, []);
+
+  const handleTileError = noteBadTile;
+
+  // Some providers answer 200 with a "blocked" image instead of an error.
+  const handleTileLoad = useCallback((event) => {
+    const img = event?.tile;
+    if (img && img.naturalWidth && img.naturalWidth !== TILE_SIZE) noteBadTile();
+  }, [noteBadTile]);
 
   const filteredLocations = useMemo(() => {
     const valid = (l) =>
@@ -147,7 +158,7 @@ export default function EmployeeGoogleMap({
           key={tileSource}
           url={TILE_SOURCES[tileSource].url}
           attribution={TILE_SOURCES[tileSource].attribution}
-          eventHandlers={{ tileerror: handleTileError }}
+          eventHandlers={{ tileerror: handleTileError, tileload: handleTileLoad }}
         />
 
         <MapUpdater center={mapCenter} />
