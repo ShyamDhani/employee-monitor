@@ -7,12 +7,9 @@ import 'leaflet/dist/leaflet.css';
 
 const DEFAULT_CENTER = { lat: 28.6139, lng: 77.2090 };
 
-// Free, keyless basemaps. Tried in order when tiles fail to load.
+// Free, keyless basemaps (no account / no quota). Tried in order when tiles fail.
+// CARTO is last: it returns 200 "API KEY REQUIRED" placeholder tiles instead of errors.
 const TILE_SOURCES = [
-  {
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
-  },
   {
     url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -20,6 +17,10 @@ const TILE_SOURCES = [
   {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ',
+  },
+  {
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: 'Map data: &copy; OpenStreetMap, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)',
   },
 ];
 
