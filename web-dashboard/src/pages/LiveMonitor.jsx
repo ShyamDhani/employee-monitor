@@ -168,9 +168,9 @@ export default function LiveMonitor() {
 
       <LiveScreenshots liveEmployees={onlineEmployees} />
 
-      <Grid container spacing={3}>
+      <Grid container spacing={3} sx={{ alignItems: 'flex-start' }}>
         <Grid item xs={12} md={8}>
-          <Card sx={{ height: '100%' }}>
+          <Card>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1.5 }}>
                 <Box>
@@ -187,11 +187,13 @@ export default function LiveMonitor() {
                   <Box sx={{ textAlign: 'center', py: 5, px: 2, color: 'text.secondary' }}>
                     <GroupsIcon sx={{ fontSize: 40, mb: 1, opacity: 0.55 }} />
                     <Typography variant="body2" fontWeight={600} sx={{ color: '#cbd5e1' }}>
-                      {employees.length === 0 ? 'No employees registered yet' : 'No employees match this filter'}
+                      {employees.length === 0
+                        ? (isConnected ? 'No employees registered yet' : 'Waiting for the monitoring server')
+                        : 'No employees match this filter'}
                     </Typography>
                     <Typography variant="caption">
                       {employees.length === 0
-                        ? 'Enrol a device to start seeing people here'
+                        ? (isConnected ? 'Enrol a device to start seeing people here' : 'The dashboard cannot reach the API right now — check the backend')
                         : 'Switch the filter above to see the full team'}
                     </Typography>
                   </Box>
