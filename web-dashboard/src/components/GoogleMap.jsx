@@ -7,16 +7,21 @@ import 'leaflet/dist/leaflet.css';
 
 const DEFAULT_CENTER = { lat: 28.6139, lng: 77.2090 };
 
-// Free, keyless basemaps (no account / no quota). Tried in order when tiles fail.
-// Esri first: OSM's volunteer servers block heavy/unexpected clients by returning an
-// HTTP 200 "Access blocked" image, which never fires a tile error.
+// Free, keyless basemaps (no account, no quota, nothing expires).
+// First choice is the app's own tile proxy (/api/tiles) which caches upstream
+// tiles on the server, so the browser never depends on a third-party quota.
 const TILE_SOURCES = [
+  {
+    url: '/api/tiles/{z}/{x}/{y}.png',
+    attribution:
+      'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Tiles: Esri, HERE, Garmin, OpenTopoMap',
+  },
   {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, HERE, Garmin, FAO, NOAA, USGS',
   },
   {
-    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    url: 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
     attribution: 'Map data: &copy; OpenStreetMap, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)',
   },
   {

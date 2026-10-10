@@ -21,6 +21,7 @@ const locationRoutes = require('./src/routes/locationRoutes');
 const settingsRoutes = require('./src/routes/settingsRoutes');
 const alertRoutes = require('./src/routes/alertRoutes');
 const audioRoutes = require('./src/routes/audioRoutes');
+const tileRoutes = require('./src/routes/tileRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -117,6 +118,7 @@ app.use('/api/location', apiLimiter, locationRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/alerts', apiLimiter, alertRoutes);
 app.use('/api/audio', apiLimiter, audioRoutes);
+app.use(tileRoutes);
 
 setupSocketHandlers(io);
 
