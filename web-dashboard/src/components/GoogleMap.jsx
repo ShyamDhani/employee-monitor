@@ -1,123 +1,111 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Circle, Popup, useMap } from 'react-leaflet';
-import { Box, Typography, Card, CardContent, Chip, CircularProgress } from '@mui/material';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  APIProvider,
+  APILoadingStatus,
+  Map,
+  AdvancedMarker,
+  Circle,
+  InfoWindow,
+  useMap,
+  useApiLoadingStatus,
+} from '@vis.gl/react-google-maps';
+import { Box, Typography, CircularProgress } from '@mui/material';
 import { CheckCircle, Warning, TravelExplore } from '@mui/icons-material';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_MAP_ID } from '../config/maps';
+import LeafletMap, { AddressLine, isInsideGeofence } from './LeafletMap';
 
 const DEFAULT_CENTER = { lat: 28.6139, lng: 77.2090 };
 
-// Free, keyless basemaps (no account, no quota, nothing expires).
-// First choice is the app's own tile proxy (/api/tiles) which caches upstream
-// tiles on the server, so the browser never depends on a third-party quota.
-const TILE_SOURCES = [
-  {
-    url: '/api/tiles/{z}/{x}/{y}.png',
-    attribution:
-      'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | Tiles: Esri, HERE, Garmin, OpenTopoMap',
-  },
-  {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, HERE, Garmin, FAO, NOAA, USGS',
-  },
-  {
-    url: 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png',
-    attribution: 'Map data: &copy; OpenStreetMap, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)',
-  },
-  {
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  },
-];
-
-const TILE_SIZE = 256;
-
-const addressCache = {};
-
-function AddressLine({ lat, lng }) {
-  const [address, setAddress] = useState(null);
-  const key = `${lat.toFixed(4)},${lng.toFixed(4)}`;
-
-  useEffect(() => {
-    let alive = true;
-    if (addressCache[key]) {
-      setAddress(addressCache[key]);
-      return () => { alive = false; };
-    }
-    setAddress('Looking up address…');
-    fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=16`)
-      .then((r) => r.json())
-      .then((data) => {
-        const line = data.display_name || 'Address not found';
-        addressCache[key] = line;
-        if (alive) setAddress(line);
-      })
-      .catch(() => { if (alive) setAddress('Address lookup unavailable'); });
-    return () => { alive = false; };
-  }, [key, lat, lng]);
-
+function LocationDetails({ loc, inside }) {
   return (
-    <div style={{ fontSize: 12, color: '#666', marginBottom: 6, lineHeight: 1.35 }}>
-      {address}
+    <div style={{ minWidth: 200, padding: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+        {inside ? (
+          <CheckCircle style={{ fontSize: 16, color: '#4CAF50' }} />
+        ) : (
+          <Warning style={{ fontSize: 16, color: '#F44336' }} />
+        )}
+        <strong style={{ fontSize: 14 }}>{loc.employeeId}</strong>
+      </div>
+      <div style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>
+        {loc.latitude?.toFixed(6)}, {loc.longitude?.toFixed(6)}
+      </div>
+      <div style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>
+        Accuracy: {loc.accuracy?.toFixed(0) || 'N/A'}m
+      </div>
+      <AddressLine lat={loc.latitude} lng={loc.longitude} />
+      {loc.speed > 0 && (
+        <div style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>
+          Speed: {(loc.speed * 3.6).toFixed(1)} km/h
+        </div>
+      )}
+      <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>
+        {new Date(loc.timestamp).toLocaleString()}
+      </div>
+      <div style={{
+        display: 'inline-block',
+        padding: '2px 8px',
+        borderRadius: 12,
+        fontSize: 11,
+        fontWeight: 'bold',
+        color: 'white',
+        background: inside ? '#4CAF50' : '#F44336',
+      }}>
+        {inside ? 'Inside Zone' : 'Outside Zone'}
+      </div>
     </div>
   );
 }
 
-const createIcon = (color) => {
-  return L.divIcon({
-    className: 'custom-marker',
-    html: `<div style="
-      width: 14px; height: 14px;
-      background: ${color};
-      border: 2px solid white;
-      border-radius: 50%;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    "></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-    popupAnchor: [0, -10],
-  });
-};
+function EmptyOverlay() {
+  return (
+    <Box
+      sx={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        display: 'flex', justifyContent: 'center', alignItems: 'center',
+        flexDirection: 'column', gap: 1, px: 3, textAlign: 'center',
+        bgcolor: 'rgba(10,13,20,0.78)',
+        backdropFilter: 'blur(3px)',
+        zIndex: 1000,
+        pointerEvents: 'none',
+      }}
+    >
+      <TravelExplore sx={{ fontSize: 44, color: '#22d3ee' }} />
+      <Typography sx={{ color: '#e2e8f0', fontWeight: 600 }}>
+        Waiting for a device location
+      </Typography>
+      <Typography variant="caption" sx={{ color: '#94a3b8', maxWidth: 380 }}>
+        The map is live and needs a GPS fix from the phone. Keep location
+        permission granted on the Android app, or send a{' '}
+        <b>Track Location</b> command from Live Monitor.
+      </Typography>
+    </Box>
+  );
+}
 
-const greenIcon = createIcon('#4CAF50');
-const redIcon = createIcon('#F44336');
-
-function MapUpdater({ center }) {
+function MapUpdater({ center, zoom }) {
   const map = useMap();
-  useMemo(() => {
-    if (center) map.setView(center, map.getZoom());
-  }, [center, map]);
+  const lastView = useRef(null);
+
+  useEffect(() => {
+    if (!map || !center) return;
+    const view = `${center.lat.toFixed(5)},${center.lng.toFixed(5)}@${zoom}`;
+    if (lastView.current === null) {
+      lastView.current = view;
+      return;
+    }
+    if (lastView.current === view) return;
+    lastView.current = view;
+    map.panTo(center);
+    map.setZoom(zoom);
+  }, [map, center, zoom]);
+
   return null;
 }
 
-export default function EmployeeGoogleMap({
-  locations = [],
-  geofences = [],
-  selectedEmployee = 'all',
-  height = 500,
-}) {
+function GoogleMapView({ locations = [], geofences = [], selectedEmployee = 'all', height = 500 }) {
   const [selectedLocation, setSelectedLocation] = useState(null);
-  const [tileSource, setTileSource] = useState(0);
-  const [tileErrors, setTileErrors] = useState(0);
-
-  const noteBadTile = useCallback(() => {
-    setTileErrors((n) => {
-      const next = n + 1;
-      if (next >= 4) {
-        setTileSource((s) => (s + 1) % TILE_SOURCES.length);
-        return 0;
-      }
-      return next;
-    });
-  }, []);
-
-  const handleTileError = noteBadTile;
-
-  // Some providers answer 200 with a "blocked" image instead of an error.
-  const handleTileLoad = useCallback((event) => {
-    const img = event?.tile;
-    if (img && img.naturalWidth && img.naturalWidth !== TILE_SIZE) noteBadTile();
-  }, [noteBadTile]);
 
   const filteredLocations = useMemo(() => {
     const valid = (l) =>
@@ -135,89 +123,39 @@ export default function EmployeeGoogleMap({
     return { lat: avgLat, lng: avgLng };
   }, [filteredLocations]);
 
-  const isInsideGeofence = useCallback((lat, lng) => {
-    return geofences.some((fence) => {
-      if (!fence.active) return true;
-      const R = 6371;
-      const dLat = (fence.lat - lat) * Math.PI / 180;
-      const dLon = (fence.lng - lng) * Math.PI / 180;
-      const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos((lat * Math.PI) / 180) *
-          Math.cos((fence.lat * Math.PI) / 180) *
-          Math.sin(dLon / 2) ** 2;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c <= fence.radius;
-    });
-  }, [geofences]);
+  const zoom = filteredLocations.length > 1 ? 11 : 14;
+
+  const selectedInside = selectedLocation
+    ? isInsideGeofence(geofences, selectedLocation.latitude, selectedLocation.longitude)
+    : false;
 
   return (
     <Box sx={{ height, position: 'relative', borderRadius: 2, overflow: 'hidden' }}>
-      <MapContainer
-        center={[mapCenter.lat, mapCenter.lng]}
-        zoom={filteredLocations.length > 1 ? 11 : 14}
+      <Map
+        defaultCenter={mapCenter}
+        defaultZoom={zoom}
+        mapId={GOOGLE_MAPS_MAP_ID}
+        gestureHandling="greedy"
         style={{ width: '100%', height: `${height}px` }}
-        scrollWheelZoom={true}
       >
-        <TileLayer
-          key={tileSource}
-          url={TILE_SOURCES[tileSource].url}
-          attribution={TILE_SOURCES[tileSource].attribution}
-          eventHandlers={{ tileerror: handleTileError, tileload: handleTileLoad }}
-        />
-
-        <MapUpdater center={mapCenter} />
+        <MapUpdater center={mapCenter} zoom={zoom} />
 
         {filteredLocations.map((loc) => {
-          const inside = isInsideGeofence(loc.latitude, loc.longitude);
+          const inside = isInsideGeofence(geofences, loc.latitude, loc.longitude);
           return (
-            <Marker
+            <AdvancedMarker
               key={loc.employeeId}
-              position={[loc.latitude, loc.longitude]}
-              icon={inside ? greenIcon : redIcon}
-              eventHandlers={{
-                click: () => setSelectedLocation(loc),
-              }}
+              position={{ lat: loc.latitude, lng: loc.longitude }}
+              onClick={() => setSelectedLocation(loc)}
             >
-              <Popup>
-                <div style={{ minWidth: 180 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                    {inside ? (
-                      <CheckCircle style={{ fontSize: 16, color: '#4CAF50' }} />
-                    ) : (
-                      <Warning style={{ fontSize: 16, color: '#F44336' }} />
-                    )}
-                    <strong style={{ fontSize: 14 }}>{loc.employeeId}</strong>
-                  </div>
-                  <div style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>
-                    {loc.latitude?.toFixed(6)}, {loc.longitude?.toFixed(6)}
-                  </div>
-                  <div style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>
-                    Accuracy: {loc.accuracy?.toFixed(0) || 'N/A'}m
-                  </div>
-                  <AddressLine lat={loc.latitude} lng={loc.longitude} />
-                  {loc.speed > 0 && (
-                    <div style={{ fontSize: 12, color: '#666', marginBottom: 2 }}>
-                      Speed: {(loc.speed * 3.6).toFixed(1)} km/h
-                    </div>
-                  )}
-                  <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>
-                    {new Date(loc.timestamp).toLocaleString()}
-                  </div>
-                  <div style={{
-                    display: 'inline-block',
-                    padding: '2px 8px',
-                    borderRadius: 12,
-                    fontSize: 11,
-                    fontWeight: 'bold',
-                    color: 'white',
-                    background: inside ? '#4CAF50' : '#F44336',
-                  }}>
-                    {inside ? 'Inside Zone' : 'Outside Zone'}
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
+              <div style={{
+                width: 16, height: 16,
+                background: inside ? '#4CAF50' : '#F44336',
+                border: '2px solid white',
+                borderRadius: '50%',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.35)',
+              }} />
+            </AdvancedMarker>
           );
         })}
 
@@ -226,43 +164,82 @@ export default function EmployeeGoogleMap({
           .map((fence) => (
             <Circle
               key={fence.id}
-              center={[fence.lat, fence.lng]}
+              center={{ lat: fence.lat, lng: fence.lng }}
               radius={fence.radius * 1000}
-              pathOptions={{
-                fillColor: '#4CAF50',
-                fillOpacity: 0.1,
-                color: '#4CAF50',
-                opacity: 0.6,
-                weight: 2,
-              }}
+              strokeColor="#4CAF50"
+              strokeOpacity={0.6}
+              strokeWeight={2}
+              fillColor="#4CAF50"
+              fillOpacity={0.1}
+              clickable={false}
             />
           ))}
-      </MapContainer>
 
-      {filteredLocations.length === 0 && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 0, left: 0, right: 0, bottom: 0,
-            display: 'flex', justifyContent: 'center', alignItems: 'center',
-            flexDirection: 'column', gap: 1, px: 3, textAlign: 'center',
-            bgcolor: 'rgba(10,13,20,0.78)',
-            backdropFilter: 'blur(3px)',
-            zIndex: 1000,
-            pointerEvents: 'none',
-          }}
-        >
-          <TravelExplore sx={{ fontSize: 44, color: '#22d3ee' }} />
-          <Typography sx={{ color: '#e2e8f0', fontWeight: 600 }}>
-            Waiting for a device location
-          </Typography>
-          <Typography variant="caption" sx={{ color: '#94a3b8', maxWidth: 380 }}>
-            The map is live and needs a GPS fix from the phone. Keep location
-            permission granted on the Android app, or send a{' '}
-            <b>Track Location</b> command from Live Monitor.
-          </Typography>
-        </Box>
-      )}
+        {selectedLocation && (
+          <InfoWindow
+            position={{ lat: selectedLocation.latitude, lng: selectedLocation.longitude }}
+            onCloseClick={() => setSelectedLocation(null)}
+            onClose={() => setSelectedLocation(null)}
+          >
+            <LocationDetails loc={selectedLocation} inside={selectedInside} />
+          </InfoWindow>
+        )}
+      </Map>
+
+      {filteredLocations.length === 0 && <EmptyOverlay />}
     </Box>
+  );
+}
+
+function MapSurface(props) {
+  const status = useApiLoadingStatus();
+
+  if (status === APILoadingStatus.AUTH_FAILURE || status === APILoadingStatus.FAILED) {
+    console.error('Google Maps failed to load, falling back to OpenStreetMap tiles.', status);
+    return <LeafletMap {...props} />;
+  }
+
+  if (status !== APILoadingStatus.LOADED) {
+    return (
+      <Box
+        sx={{
+          height: props.height,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: 'rgba(10,13,20,0.9)',
+          borderRadius: 2,
+        }}
+      >
+        <CircularProgress size={36} />
+        <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+          Loading Google Maps…
+        </Typography>
+      </Box>
+    );
+  }
+
+  return <GoogleMapView {...props} />;
+}
+
+export default function EmployeeGoogleMap(props) {
+  const [loadError, setLoadError] = useState(null);
+
+  if (!GOOGLE_MAPS_API_KEY) {
+    return <LeafletMap {...props} />;
+  }
+
+  return (
+    <APIProvider
+      apiKey={GOOGLE_MAPS_API_KEY}
+      onError={(error) => {
+        setLoadError(error);
+        console.error('Google Maps API load error:', error);
+      }}
+    >
+      {loadError ? <LeafletMap {...props} /> : <MapSurface {...props} />}
+    </APIProvider>
   );
 }
