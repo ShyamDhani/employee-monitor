@@ -1,4 +1,0 @@
-[default]
-login_session = arn:aws:iam::400217687931:user/siddharth-easyskill
-region = us-east-1
-output = json
