@@ -57,3 +57,4 @@ backend/cache/
 
 # Android local properties
 android-app/local.properties
+.out/
