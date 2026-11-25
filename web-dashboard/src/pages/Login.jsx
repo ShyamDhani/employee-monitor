@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Box, Card, CardContent, TextField, Button, Typography, Alert,
-  Divider, InputAdornment, IconButton, Stack, Chip, Avatar, useMediaQuery, useTheme
+  InputAdornment, IconButton, Stack, Chip, Avatar, useMediaQuery, useTheme
 } from '@mui/material';
 import {
   Visibility, VisibilityOff, MonitorHeart, ShieldMoon as ShieldIcon,
@@ -42,10 +42,6 @@ export default function Login() {
     } finally {
       dispatch(setLoading(false));
     }
-  };
-
-  const handleGoogleLogin = () => {
-    window.location.href = '/api/auth/google';
   };
 
   return (
@@ -168,26 +164,6 @@ export default function Login() {
             </Typography>
 
             {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
-
-            <Button
-              fullWidth
-              variant="outlined"
-              onClick={handleGoogleLogin}
-              sx={{
-                mb: 2,
-                py: 1.15,
-                borderColor: 'rgba(148,163,184,0.28)',
-                color: '#e2e8f0',
-                '&:hover': { borderColor: 'rgba(148,163,184,0.5)', bgcolor: 'rgba(148,163,184,0.08)' },
-              }}
-            >
-              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style={{ width: 18, marginRight: 10 }} />
-              Continue with Google
-            </Button>
-
-            <Divider sx={{ my: 2.5, '&::before, &::after': { borderColor: 'rgba(148,163,184,0.2)' } }}>
-              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700 }}>OR</Typography>
-            </Divider>
 
             <form onSubmit={handleSubmit}>
               <TextField

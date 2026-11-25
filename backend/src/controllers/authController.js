@@ -31,8 +31,3 @@ exports.login = async (req, res) => {
 exports.getMe = async (req, res) => {
   res.json({ success: true, user: req.user });
 };
-
-exports.googleCallback = async (req, res) => {
-  const token = generateToken(req.user._id);
-  res.redirect(`${process.env.CLIENT_URL}/auth/callback?token=${token}`);
-};
