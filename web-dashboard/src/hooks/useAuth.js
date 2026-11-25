@@ -22,21 +22,6 @@ export const useAuth = () => {
     }
   }, [dispatch]);
 
-  const register = useCallback(async (email, password, name) => {
-    dispatch(setLoading(true));
-    dispatch(setError(null));
-    try {
-      const response = await authAPI.register(email, password, name);
-      dispatch(setCredentials(response.data));
-      return true;
-    } catch (err) {
-      dispatch(setError(err.response?.data?.message || 'Registration failed'));
-      return false;
-    } finally {
-      dispatch(setLoading(false));
-    }
-  }, [dispatch]);
-
   const logoutUser = useCallback(() => {
     dispatch(logout());
   }, [dispatch]);
@@ -62,7 +47,6 @@ export const useAuth = () => {
     loading,
     error,
     login,
-    register,
     logout: logoutUser,
   };
 };

@@ -28,21 +28,6 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.register = async (req, res) => {
-  try {
-    const { email, password, name } = req.body;
-    let user = await User.findOne({ email });
-    if (user) {
-      return res.status(400).json({ success: false, message: 'User already exists' });
-    }
-    user = await User.create({ email, password, name, role: 'admin' });
-    const token = generateToken(user._id);
-    res.status(201).json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
 exports.getMe = async (req, res) => {
   res.json({ success: true, user: req.user });
 };

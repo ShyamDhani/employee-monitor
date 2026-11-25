@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Box, Card, CardContent, TextField, Button, Typography, Alert,
-  Divider, Link, InputAdornment, IconButton, Stack, Chip, Avatar, useMediaQuery, useTheme
+  Divider, InputAdornment, IconButton, Stack, Chip, Avatar, useMediaQuery, useTheme
 } from '@mui/material';
 import {
   Visibility, VisibilityOff, MonitorHeart, ShieldMoon as ShieldIcon,
@@ -23,8 +23,6 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isRegister, setIsRegister] = useState(false);
-  const [name, setName] = useState('');
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { loading, error } = useSelector((state) => state.auth);
@@ -36,12 +34,7 @@ export default function Login() {
     dispatch(setLoading(true));
     dispatch(clearError());
     try {
-      let response;
-      if (isRegister) {
-        response = await authAPI.register(email, password, name);
-      } else {
-        response = await authAPI.login(email, password);
-      }
+      const response = await authAPI.login(email, password);
       dispatch(setCredentials(response.data));
       navigate('/');
     } catch (err) {
@@ -168,10 +161,10 @@ export default function Login() {
             </Box>
 
             <Typography variant="h5" fontWeight={800} sx={{ letterSpacing: '-0.02em' }}>
-              {isRegister ? 'Create your account' : 'Welcome back'}
+              Welcome back
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, mb: 3 }}>
-              {isRegister ? 'Set up a new admin login for the dashboard' : 'Sign in to open the monitoring dashboard'}
+              Sign in to open the monitoring dashboard
             </Typography>
 
             {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
@@ -197,15 +190,6 @@ export default function Login() {
             </Divider>
 
             <form onSubmit={handleSubmit}>
-              {isRegister && (
-                <TextField
-                  fullWidth
-                  label="Full Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  sx={{ mb: 2 }}
-                />
-              )}
               <TextField
                 fullWidth
                 label="Email address"
@@ -219,7 +203,7 @@ export default function Login() {
                 fullWidth
                 label="Password"
                 type={showPassword ? 'text' : 'password'}
-                autoComplete={isRegister ? 'new-password' : 'current-password'}
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 sx={{ mb: 3 }}
@@ -242,7 +226,7 @@ export default function Login() {
                 endIcon={<ArrowIcon />}
                 sx={{ py: 1.3, fontSize: '0.98rem' }}
               >
-                {loading ? 'Please wait...' : isRegister ? 'Create Account' : 'Sign In'}
+                {loading ? 'Please wait...' : 'Sign In'}
               </Button>
             </form>
 
@@ -253,18 +237,6 @@ export default function Login() {
               </Typography>
             </Stack>
 
-            <Typography variant="body2" textAlign="center" sx={{ mt: 2.5 }}>
-              {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
-              <Link
-                component="button"
-                variant="body2"
-                underline="hover"
-                fontWeight={700}
-                onClick={() => { setIsRegister(!isRegister); dispatch(clearError()); }}
-              >
-                {isRegister ? 'Sign In' : 'Create Account'}
-              </Link>
-            </Typography>
           </CardContent>
         </Card>
       </Box>
